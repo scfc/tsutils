@@ -3,15 +3,31 @@
  * $Id: lsexp.c 21740 2007-05-01 00:39:42Z river $
  */
 
-#include <sys/types.h>
-#include <sys/time.h>
-#include <stdio.h>
-#include <pwd.h>
-#include <time.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <shadow.h>
+#ifdef __FreeBSD__
+# define USE_GETPWNAM
+# define getspnam getpwnam
+# define spwd passwd
+# define sp_expire pw_expire
+#else
+# define USE_GETSPNAM
+#endif
+
+#include	<sys/types.h>
+#include	<sys/time.h>
+#include	<stdio.h>
+#include	<pwd.h>
+#include	<time.h>
+#include	<unistd.h>
+#include	<errno.h>
+#include	<string.h>
+#ifdef USE_GETSPNAM
+# include	<shadow.h>
+#else
+# define getspent getpwent
+# define sp_expire pw_expire
+# define sp_name pw_name
+# define spwd passwd
+#endif
 
 int
 main(void)
@@ -30,7 +46,7 @@ time_t		 when, now;
 		if (when > now)
 			continue;
 
-		(void) printf("%s\n", spwent->sp_namp);
+		(void) printf("%s\n", spwent->sp_name);
 	}
 
 	return 0;

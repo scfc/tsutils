@@ -12,6 +12,12 @@
  * whodo: report logged in users and their activities.
  */
 
+#if defined(__sun) && defined(__SVR4)
+# define HAVE_UTMPX
+#elif defined(__linux__)
+# define HAVE_UTMPX
+#endif
+
 #include	<sys/types.h>
 #include	<stdio.h>
 #include	<stdlib.h>
@@ -19,7 +25,13 @@
 #include	<ctype.h>
 #include	<unistd.h>
 #include	<dirent.h>
-#include	<utmpx.h>
+
+#ifdef HAVE_UTMPX
+# include	<utmpx.h>
+#else
+# include	<utmp.h>
+# define ut_user ut_name
+#endif
 
 /*
  * Process tree entry.
@@ -45,16 +57,36 @@ void	 make_safe		(char *s);
 int
 main()
 {
+#ifdef HAVE_UTMPX
 struct	utmpx	*ut;
+#else
+struct	utmp	 uti;
+struct	utmp	*ut = &uti;
+int		 utfd;
+#endif
 
 	build_uproc_tree();
 
+#ifdef HAVE_UTMPX
 	setutxent();
 	while ((ut = getutxent()) != NULL) {
+#else
+	if ((utfd = open(_PATH_UTMP, O_RDONLY)) == -1) {
+		perror(_PATH_UTMP);
+		return 1;
+	}
+	while (read(utfd, (char *) ut, sizeof(uti)) == sizeof(uti)) {
+#endif
+
 		uproc_t	*pp;
 
+#ifdef HAVE_UTMPX
 		if (ut->ut_type != USER_PROCESS)
 			continue;
+#else
+		if (!ut->ut_host[0])
+			continue;
+#endif
 
 		if ((pp = find_uproc(ut->ut_pid, 0)) != NULL) {
 			/* 

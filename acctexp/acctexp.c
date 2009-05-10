@@ -3,6 +3,15 @@
  * $Id: acctexp.c 11210 2005-10-06 09:59:28Z kateturner $
  */
 
+#ifdef __FreeBSD__
+# define USE_GETPWNAM
+# define getspnam getpwnam
+# define spwd passwd
+# define sp_expire pw_expire
+#else
+# define USE_GETSPNAM
+#endif
+
 #include <sys/types.h>
 #include <sys/time.h>
 #include <stdio.h>
@@ -11,7 +20,10 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
-#include <shadow.h>
+
+#ifdef USE_GETSPNAM
+# include <shadow.h>
+#endif
 
 int
 main(argc, argv)

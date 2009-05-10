@@ -8,29 +8,55 @@
 
 /* $Id$ */
 
+#if defined(__sun) && defined(__SVR4)
+# define HAVE_UTMPX
+#elif defined(__linux__)
+# define HAVE_UTMPX
+#endif
+
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #include	<string.h>
 #include	<fcntl.h>
 #include	<stdio.h>
-#include	<utmpx.h>
 #include	<unistd.h>
+#ifdef HAVE_UTMPX
+# include	<utmpx.h>
+#else
+# include	<utmp.h>
+# define ut_user ut_name
+#endif
 
 int
 get_user_tty(user)
 	char const *user;
 {
-struct utmpx	*ut;
 char		 ttydev[32];
 struct stat	 st;
 time_t		 idle = 0;
 int		 fd = -1;
+#ifndef HAVE_UTMPX
+int		 utfd = -1;
+struct utmp	 uti;
+struct utmp	*ut = &uti;
+	if ((utfd = open(_PATH_UTMP, O_RDONLY)) == -1)
+		return -1;
 
+	while (read(utfd, (char *) ut, sizeof(uti)) == sizeof(uti)) {
+#else
+struct utmpx	*ut;
 	setutxent();
 	while ((ut = getutxent()) != NULL) {
+#endif
+
 	int	tmp;
+#ifdef HAVE_UTMPX
 		if (ut->ut_type != USER_PROCESS)
 			continue;
+#else
+		if (!ut->ut_host[0])
+			continue;
+#endif
 
 		if (strcmp(ut->ut_user, user))
 			continue;

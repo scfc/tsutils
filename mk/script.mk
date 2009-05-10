@@ -13,15 +13,8 @@ all:
 install:
 else
 all: $(PROG)
-install: all realinstall $(INSTALLEXTRA)
+install: all realinstall $(INSTALLEXTRA) 
 endif
-
-$(PROG): $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $@ $(LIBS)
-lint:
-	$(LINT) $(LINTFLAGS) $(INCLUDES) $(SRCS) $(LIBS)
-clean:
-	rm -f $(PROG) $(OBJS)
 
 realinstall:
 	install -d -m 755 $(BINDIR)
