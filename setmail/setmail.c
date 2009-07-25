@@ -26,9 +26,9 @@
 
 #include	<readline/readline.h>
 
-#define SERVER		"hemlock"
+#define SERVER		"ldap.toolserver.org"
 #define PORT		LDAP_PORT
-#define BASE_DN		"ou=People,o=toolserver"
+#define BASE_DN		"ou=People,o=unix,o=toolserver"
 
 char *
 get_ldap_secret(void)

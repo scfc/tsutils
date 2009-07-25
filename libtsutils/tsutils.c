@@ -19,6 +19,10 @@
 #include	<unistd.h>
 #include	"tsutils.h"
 
+#if defined(__sun) && defined(__SVR4)
+int daemon(int, int);
+#endif
+
 char *
 realloc_strncat(str, add, len)
 	char *str;

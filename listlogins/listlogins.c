@@ -13,8 +13,10 @@
  */
 
 #if defined(__sun) && defined(__SVR4)
-# define HAVE_UTMPX
-#elif defined(__linux__)
+# define SOLARIS
+#endif
+
+#if defined(SOLARIS) || defined(__linux__)
 # define HAVE_UTMPX
 #endif
 
@@ -99,8 +101,8 @@ int		 utfd;
 		if (utp == NULL) {
 			utp = calloc(1, sizeof(*utp));
 			(void) strncpy(utp->ute_host, ut->ut_host, sizeof(utp->ute_host) - 1);
-			if (ut->ut_host[UT_HOSTSIZE] != 0)
-				utp->ute_host[UT_HOSTSIZE] = 0;
+			if (ut->ut_host[sizeof(ut->ut_host)] != 0)
+				utp->ute_host[sizeof(ut->ut_host)] = 0;
 			utp->ute_next = ents.ute_next;
 			ents.ute_next = utp;
 		}

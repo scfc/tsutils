@@ -2,6 +2,8 @@ PROG		= whodo
 SRCS		= whodo.c
 OBJS		= $(SRCS:.c=.o)
 
-SKIP		= FreeBSD
+# Not supported on FreeBSD (no utmpx)
+# Solaris already has whodo.
+SKIP		= FreeBSD SunOS
 
 include ../mk/prog.mk

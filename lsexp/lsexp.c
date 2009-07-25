@@ -29,6 +29,10 @@
 # define spwd passwd
 #endif
 
+#if defined(__sun) && defined(__SVR4)
+# define sp_name sp_namp
+#endif
+
 int
 main(void)
 {

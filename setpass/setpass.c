@@ -24,11 +24,11 @@
 
 #include	<ldap.h>
 
-#define SERVER		"hemlock.toolserver.org"
+#define SERVER		"ldap.toolserver.org"
 #define PORT		LDAP_PORT
 #define SECRET		"/etc/ldap_secret"
 #define ADMIN_DN 	"cn=Directory Manager"
-#define BASE_DN		"ou=People,o=toolserver"
+#define BASE_DN		"ou=People,o=unix,o=toolserver"
 
 char *
 get_ldap_secret(void)
