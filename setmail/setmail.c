@@ -21,6 +21,7 @@
 #include	<unistd.h>
 #include	<pwd.h>
 #include	<utmpx.h>
+#include	<stdarg.h>
 
 #include	<ldap.h>
 
@@ -29,6 +30,25 @@
 #define SERVER		"ldap.toolserver.org"
 #define PORT		LDAP_PORT
 #define BASE_DN		"ou=People,o=unix,o=toolserver"
+
+#if defined(__sun) && defined(__SVR4)
+int
+asprintf(char **strp, char const *fmt, ...)
+{
+va_list	ap;
+int	len;
+	va_start(ap, end);
+	if ((len = vsnprintf(NULL, 0, fmt, ap)) < 0)
+		return -1;
+	if ((*strp = malloc(len + 1)) == NULL)
+		return -1;
+	if ((len = vsnprintf(*strp, len + 1, fmt, ap)) < 0) {
+		free(*strp);
+		return -1;
+	}
+	return len;
+}
+#endif
 
 char *
 get_ldap_secret(void)

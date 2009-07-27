@@ -1,6 +1,6 @@
 PROG		= acctexp
-BINMODE		= 2755
-GROUP		= shadow
+BINMODE		= 4755
+GROUP		= root
 
 SRCS		= acctexp.c
 OBJS		= $(SRCS:.c=.o)
