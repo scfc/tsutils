@@ -1,14 +1,16 @@
 include ../mk/rules.mk
 
-BINDIR	?= /usr/local/bin
-MANDIR	?= /usr/local/man/man$(MANSECT)
+BINDIR	?= bin
+bindir	?= $(prefix)/$(BINDIR)
+datadir	?= $(prefix)/share
+mandir	?= $(datadir)/man
 BINMODE	?= 755
 OWNER	?= root
 GROUP	?= bin
 MANSECT	?= 1
 
 ifeq ($(shell uname),SunOS)
-INSTALL ?= /opt/ts/gnu/bin/install
+INSTALL ?= ginstall
 else
 INSTALL ?= install
 endif
@@ -22,11 +24,15 @@ install: all realinstall $(INSTALLEXTRA)
 endif
 
 realinstall:
-	$(INSTALL) -d -m 755 $(BINDIR)
+	$(INSTALL) -d -m 755 $(DESTDIR)$(BINDIR)
+ifeq ($(DESTDIR),)
 	$(INSTALL) -m $(BINMODE) -o $(OWNER) -g $(GROUP) $(PROG) $(BINDIR)
+else
+	$(INSTALL) $(PROG) $(DESTDIR)$(BINDIR)
+endif
 	if test -f $(PROG).$(MANSECT); then \
-		$(INSTALL) -d -m 755 $(MANDIR); \
-		$(INSTALL) -m 644 $(PROG).$(MANSECT) $(MANDIR); \
+		$(INSTALL) -d -m 755 $(DESTDIR)$(MANDIR); \
+		$(INSTALL) -m 644 $(PROG).$(MANSECT) $(DESTDIR)$(MANDIR); \
 	fi
 
 .PHONY: clean all install realinstall lint

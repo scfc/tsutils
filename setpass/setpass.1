@@ -1,0 +1,21 @@
+.TH SETPASS "1" "January 2010" "Toolserver" "User Commands"
+.SH NAME
+setpass \- set initial LDAP password
+.SH SYNOPSIS
+.B setpass
+.SH DESCRIPTION
+.PP
+.B setpass
+is used to set your initial LDAP password.  It will prompt for a new
+password twice, then set the password on the LDAP server.  If you
+have already set a password,
+.B setpass
+will print an error message and exit.  In this case, you should use
+.B passwd (1)
+to change your password.
+.SH AUTHOR
+.B setpass
+was written by River Tarnell <river.tarnell@wikimedia.de>.
+.SH SEE ALSO
+.LP
+\fBpasswd\fR(1)

@@ -1,5 +1,5 @@
 PROG		= lsexp
-BINDIR		= /usr/local/sbin
+BINDIR		= sbin
 
 SRCS		= lsexp.c
 OBJS		= $(SRCS:.c=.o)

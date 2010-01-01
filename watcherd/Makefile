@@ -1,5 +1,5 @@
 PROG		= watcherd
-BINDIR		= /usr/local/sbin
+BINDIR		= sbin
 
 LIBTSUTILS	= YES
 MYSQL		= YES

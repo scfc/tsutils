@@ -6,7 +6,9 @@
 ifeq ($(shell uname),SunOS)
 CC		= cc
 CFLAGS		= -xO4 
+prefix		= /opt/local
 else
 CC		= gcc
 CFLAGS		= -O2 -W -Wall -Werror
+prefix=/usr/local
 endif

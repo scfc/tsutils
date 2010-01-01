@@ -1,0 +1,7 @@
+ARCH=i386
+CATEGORY=TS,application
+NAME=Miscellaneous Toolserver utilities
+PKG=TSutils
+VERSION=%version%
+BASEDIR=/opt/local
+

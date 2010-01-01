@@ -1,0 +1,17 @@
+i pkginfo=%PWD%/pkginfo
+!default 755 root root
+d none %prefix%/bin
+d none %prefix%/sbin
+d none %prefix%/share
+d none %prefix%/share/man
+d none %prefix%/share/man/man1
+f none %prefix%/bin/date2days=%PWD%/stage/%prefix%/bin/date2days
+f none %prefix%/bin/listlogins=%PWD%/stage/%prefix%/bin/listlogins
+f none %prefix%/bin/days2date=%PWD%/stage/%prefix%/bin/days2date
+f none %prefix%/bin/readline=%PWD%/stage/%prefix%/bin/readline
+f none %prefix%/bin/setmail=%PWD%/stage/%prefix%/bin/setmail
+f none %prefix%/bin/setpass=%PWD%/stage/%prefix%/bin/setpass 2711
+f none %prefix%/bin/acctexp=%PWD%/stage/%prefix%/bin/acctexp 4711
+f none %prefix%/sbin/watcherd=%PWD%/stage/%prefix%/sbin/watcherd
+f none %prefix%/sbin/lsexp=%PWD%/stage/%prefix%/sbin/lsexp
+f none %prefix%/share/man/man1/setpass.1=%PWD%/stage/%prefix%/share/man/man1/setpass.1

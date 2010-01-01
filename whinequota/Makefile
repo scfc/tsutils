@@ -1,4 +1,4 @@
 PROG		= whinequota
-BINDIR		= /usr/local/sbin
+BINDIR		= sbin
 
 include ../mk/script.mk
