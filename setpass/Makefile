@@ -1,6 +1,6 @@
 PROG		= setpass
 BINMODE		= 2711
-GROUP		= ldapscrt
+GROUP		= root
 
 SRCS		= setpass.c
 OBJS		= $(SRCS:.c=.o)
