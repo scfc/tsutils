@@ -9,6 +9,8 @@
 #include	<stdio.h>
 #include	<errno.h>
 #include	<string.h>
+#include	<fcntl.h>
+#include	<stdlib.h>
 
 int
 main(argc, argv)
@@ -30,7 +32,11 @@ main(argc, argv)
 		return 1;
 	}
 
+#if defined(__sun) && defined(__SVR4)
+	if ((p = getpassphrase(argv[1])) == NULL) {
+#else
 	if ((p = getpass(argv[1])) == NULL) {
+#endif
 		perror("getpass");
 		return 1;
 	}

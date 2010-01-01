@@ -1,4 +1,17 @@
-SUBDIRS		= libtsutils watcherd acctexp listlogins lsexp whodo whinequota days2date date2days readline setmail setpass
+SUBDIRS		= \
+	libtsutils	\
+	watcherd	\
+	acctexp		\
+	listlogins	\
+	lsexp		\
+	whodo		\
+	whinequota	\
+	days2date	\
+	date2days	\
+	readline	\
+	setmail		\
+       	setpass		\
+	getpasstofile
 MAKEFLAGS	= --no-print-directory
 
 include config.mk
@@ -23,6 +36,7 @@ pkginfo: pkginfo.in Makefile
 
 package: TSutils.pkg
 TSutils.pkg: prototype pkginfo all
+	$(MAKE) DESTDIR=$$PWD/stage install
 	pkgmk -o -d $$PWD
 	pkgtrans -o -s $$PWD $$PWD/TSutils.pkg TSutils
 

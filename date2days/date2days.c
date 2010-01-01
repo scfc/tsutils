@@ -34,6 +34,6 @@ char		*end;
 	}
 
 	when = mktime(&tm);
-	(void) printf("%u %u\n", (unsigned)when, (unsigned) (when / 60 / 60 / 24));
+	(void) printf("%u\n", (unsigned) (when / 60 / 60 / 24));
 	return 0;
 }

@@ -1,0 +1,24 @@
+.TH READLINE "1" "January 2010" "Toolserver" "User Commands"
+.SH NAME
+readline \- read a line from the terminal with line editing
+.SH SYNOPSIS
+.B readline
+[\fUprompt\fR]
+.SH DESCRIPTION
+.PP
+.B readline
+prints \fUprompt\fR, reads a line from the current terminal with line
+editing enabled, then prints the line to stdout.  
+.B readline
+should be used a shell script like this:
+.PP
+.RS 5
+line=$(readline "Enter an expression: ")
+.br
+echo $(expr $line)
+.RE
+.SH SEE ALSO
+\fBreadline\fR(1)
+.SH AUTHOR
+.B readline
+was written by River Tarnell <river.tarnell@wikimedia.de>.

@@ -1,0 +1,15 @@
+.TH GETPASSTOFILE "1" "January 2010" "Toolserver" "User Commands"
+.SH NAME
+getpasstofile \- read a password and put it in a file
+.SH SYNOPSIS
+.B getpasstofile
+\fUprompt\fR \fUfile\fR
+.SH DESCRIPTION
+.PP
+.B getpasstofile
+prints \fUprompt\fR, then reads a password without echoing it and writes
+it to \fUfile\fR.  \fUfile\fR is opened in a secure manner, to prevent
+anyone from reading the password.
+.SH AUTHOR
+.B getpasstofile
+was written by River Tarnell <river.tarnell@wikimedia.de>.
