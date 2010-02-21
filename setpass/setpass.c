@@ -32,6 +32,10 @@
 #define BASE_DN		"ou=People,o=unix,o=toolserver"
 
 #if defined(__sun) && defined(__SVR4)
+# define getpass getpassphrase
+#endif
+
+#if defined(__sun) && defined(__SVR4)
 int
 asprintf(char **strp, char const *fmt, ...)
 {
@@ -121,7 +125,7 @@ LDAPMessage	*result, *ent;
 char		**vals;
 LDAPMod		 mod;
 LDAPMod		*mods[2];
-char		*newpass, *verify;
+char		 newpass[128], verify[128], *s;
 
 	if (argc != 1) {
 		(void) fprintf(stderr, "usage: setpass\n");
@@ -201,10 +205,16 @@ char		*newpass, *verify;
 		return 1;
 	}
 
-	if ((newpass = getpass("Enter new password: ")) == NULL)
+	if ((s = getpass("Enter new password: ")) == NULL)
 		return 1;
-	if ((verify = getpass("Re-enter password: ")) == NULL)
+	strncpy(newpass, s, sizeof(newpass));
+	newpass[sizeof(newpass) - 1] = 0;
+
+	if ((s = getpass("Re-enter password: ")) == NULL)
 		return 1;
+	strncpy(verify, s, sizeof(verify));
+	newpass[sizeof(newpass) - 1] = 0;
+
 	if (strcmp(newpass, verify)) {
 		(void) fprintf(stderr, "setpass: passwords don't match\n");
 		return 1;
