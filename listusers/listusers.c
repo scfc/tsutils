@@ -26,7 +26,7 @@
 
 #include	<readline/readline.h>
 
-#define SERVER		"ldap"
+#define SERVER		"ldap.toolserver.org"
 #define PORT		LDAP_PORT
 #define BASE_DN		"ou=People,o=unix,o=toolserver"
 

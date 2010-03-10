@@ -11,7 +11,8 @@ SUBDIRS		= \
 	readline	\
 	setmail		\
        	setpass		\
-	getpasstofile
+	getpasstofile	\
+	summdisk
 MAKEFLAGS	= --no-print-directory
 
 include config.mk

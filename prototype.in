@@ -30,3 +30,4 @@ f none %prefix%/share/man/man1/acctexp.1=%PWD%/stage/%prefix%/share/man/man1/acc
 
 f none %prefix%/sbin/watcherd=%PWD%/stage/%prefix%/sbin/watcherd
 f none %prefix%/sbin/lsexp=%PWD%/stage/%prefix%/sbin/lsexp
+f none %prefix%/bin/summdisk=%PWD%/stage/%prefix%/bin/summdisk
