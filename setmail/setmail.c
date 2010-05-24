@@ -32,6 +32,10 @@
 #define BASE_DN		"ou=People,o=unix,o=toolserver"
 
 #if defined(__sun) && defined(__SVR4)
+# define getpass getpassphrase
+#endif
+
+#if defined(__sun) && defined(__SVR4)
 int
 asprintf(char **strp, char const *fmt, ...)
 {
