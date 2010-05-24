@@ -22,6 +22,9 @@ f none %prefix%/share/man/man1/readline.1=%PWD%/stage/%prefix%/share/man/man1/re
 f none %prefix%/bin/setmail=%PWD%/stage/%prefix%/bin/setmail
 f none %prefix%/share/man/man1/setmail.1=%PWD%/stage/%prefix%/share/man/man1/setmail.1
 
+f none %prefix%/bin/setlicense=%PWD%/stage/%prefix%/bin/setlicense
+f none %prefix%/share/man/man1/setlicense.1=%PWD%/stage/%prefix%/share/man/man1/setlicense.1
+
 f none %prefix%/bin/setpass=%PWD%/stage/%prefix%/bin/setpass 2711
 f none %prefix%/share/man/man1/setpass.1=%PWD%/stage/%prefix%/share/man/man1/setpass.1
 

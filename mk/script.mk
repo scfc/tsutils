@@ -24,11 +24,11 @@ install: all realinstall $(INSTALLEXTRA)
 endif
 
 realinstall:
-	$(INSTALL) -d -m 755 $(DESTDIR)$(BINDIR)
+	$(INSTALL) -d -m 755 $(DESTDIR)$(bindir)
 ifeq ($(DESTDIR),)
-	$(INSTALL) -m $(BINMODE) -o $(OWNER) -g $(GROUP) $(PROG) $(BINDIR)
+	$(INSTALL) -m $(BINMODE) -o $(OWNER) -g $(GROUP) $(PROG) $(bindir)
 else
-	$(INSTALL) $(PROG) $(DESTDIR)$(BINDIR)
+	$(INSTALL) $(PROG) $(DESTDIR)$(bindir)
 endif
 	if test -f $(PROG).$(MANSECT); then \
 		$(INSTALL) -d -m 755 $(DESTDIR)$(MANDIR); \
