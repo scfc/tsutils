@@ -1,0 +1,25 @@
+.TH RESETPASS "1" "May 2010" "Toolserver" "User Commands"
+.SH NAME
+resetpass \- reset LDAP password
+.SH SYNOPSIS
+.B resetpass
+.SH DESCRIPTION
+.PP
+\fBresetpass\fR allows you to reset your LDAP password if you have
+forgotten it.  If you know your current password, use \fBpasswd\fR(1)
+instead of \fBresetpass\fR.  If your LDAP password is not set yet,
+use \fBsetpass\fR(1) instead of \fBresetpass\fR.
+.PP
+\fBresetpass\fR will generate a password reset token and mail it to
+your LDAP email address.  When you receive the token, run
+\fBresetpass\fR again and enter the token.
+.PP
+If you do not have an LDAP email address set, you must set one before
+running \fBresetpass\fR.  To do so, use \fBsetmail\fR(1).  Note that you
+will need your current LDAP password te run \fBsetmail\fR.
+.SH AUTHOR
+.B resetpass
+was written by River Tarnell <river.tarnell@wikimedia.de>.
+.SH SEE ALSO
+.LP
+\fBpasswd\fR(1)

@@ -13,17 +13,24 @@ SUBDIRS		= \
        	setpass		\
 	getpasstofile	\
 	summdisk	\
-	setlicense
+	setlicense	\
+	resetpass
 MAKEFLAGS	= --no-print-directory
 
 include config.mk
 
-all clean depend install lint:
+all clean depend install lint::
 	@for d in $(SUBDIRS); do \
 		echo "$@ ==> $$d"; \
 		$(MAKE) -C $$d $@ || exit 1; \
 		echo "$@ <== $$d"; \
 	done
+
+clean::
+	rm -f prototype pkginfo
+	rm -rf stage
+	rm -f TSutils.pkg
+	rm -rf TSutils
 
 prototype: prototype.in Makefile
 	cat $<						\
