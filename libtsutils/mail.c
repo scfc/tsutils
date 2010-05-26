@@ -52,6 +52,7 @@ sendmail(username, message)
 		logmsg("mail child: execv: %s", strerror(errno));
 		_exit(1);
 
+		/*LINTED*/
 	case -1:
 		logmsg("sending mail: fork: %s", strerror(errno));
 		return -1;

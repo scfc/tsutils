@@ -28,6 +28,9 @@ f none %prefix%/share/man/man1/setlicense.1=%PWD%/stage/%prefix%/share/man/man1/
 f none %prefix%/bin/setpass=%PWD%/stage/%prefix%/bin/setpass 2711
 f none %prefix%/share/man/man1/setpass.1=%PWD%/stage/%prefix%/share/man/man1/setpass.1
 
+f none %prefix%/bin/resetpass=%PWD%/stage/%prefix%/bin/resetpass 6711
+f none %prefix%/share/man/man1/resetpass.1=%PWD%/stage/%prefix%/share/man/man1/resetpass.1
+
 f none %prefix%/bin/acctexp=%PWD%/stage/%prefix%/bin/acctexp 4711
 f none %prefix%/share/man/man1/acctexp.1=%PWD%/stage/%prefix%/share/man/man1/acctexp.1
 

@@ -1,11 +1,36 @@
-/* Copyright (c) 2008, 2010 River Tarnell <river@wikimedia.org>. */
 /*
- * Permission is granted to anyone to use this software for any purpose,
- * including commercial applications, and to alter it and redistribute it
- * freely. This software is provided 'as-is', without any express or implied
- * warranty.
+ *  Copyright (c) 2008, River Tarnell
+ *  Copyright (c) 2010, Wikimedia Deutschland (River Tarnell)
+ *  All rights reserved.
+ * 
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *      * Redistributions of source code must retain the above copyright
+ *        notice, this list of conditions and the following disclaimer.
+ *      * Redistributions in binary form must reproduce the above copyright
+ *        notice, this list of conditions and the following disclaimer in the
+ *        documentation and/or other materials provided with the distribution.
+ *      * Neither the name of Wikimedia Deutschland nor the
+ *        names of its contributors may be used to endorse or promote products
+ *        derived from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY WIKIMEDIA DEUTSCHLAND ''AS IS'' AND ANY
+ *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ *  DISCLAIMED. IN NO EVENT SHALL WIKIMEDIA DEUTSCHLAND BE LIABLE FOR ANY
+ *  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * NOTE: This software is not released as a product. It was written primarily for
+ * Wikimedia Deutschland's own use, and is made public as is, in the hope it may
+ * be useful. Wikimedia Deutschland may at any time discontinue developing or
+ * supporting this software. There is no guarantee any new versions or even fixes
+ * for security issues will be released.
  */
-
 /* $Id$ */
 
 /*
@@ -28,27 +53,16 @@
 #include	<fcntl.h>
 #include	<inttypes.h>
 #include	<time.h>
+#include	<strings.h>
 
 #include	<ldap.h>
 #include	<readline/readline.h>
 
-#define SERVER		"ldap.toolserver.org"
-#define PORT		LDAP_PORT
-#define SECRET		"/etc/ldap_secret"
-#define ADMIN_DN 	"cn=Directory Manager"
-#define BASE_DN		"ou=People,o=unix,o=toolserver"
+#include	"tsutils.h"
 
-#if defined(__sun) && defined(__SVR4)
-# define getpass getpassphrase
-#endif
-
-#if defined(__sun) && defined(__SVR4)
-int asprintf(char **, char const *, ...);
-#endif
 static const char *mktoken(void);
-static const char *get_ldap_secret(void);
 static int check_utmp(const char *username);
-static int set_password(LDAP *conn, const char *userdn);
+static int set_password(LDAP *conn, const char *username);
 static int validate_token(const char *username, const char *email);
 static int generate_token(const char *username, const char *email);
 
@@ -93,57 +107,6 @@ err:
 	return NULL;
 }
 
-		
-		
-#if defined(__sun) && defined(__SVR4)
-int
-asprintf(char **strp, char const *fmt, ...)
-{
-va_list ap;
-int     len;
-	va_start(ap, end);
-	if ((len = vsnprintf(NULL, 0, fmt, ap)) < 0)
-		return -1;
-	if ((*strp = malloc(len + 1)) == NULL)
-		return -1;
-	if ((len = vsnprintf(*strp, len + 1, fmt, ap)) < 0) {
-		free(*strp);
-		return -1;
-	}
-	return len;
-}
-#endif
-
-static const char *
-get_ldap_secret(void)
-{
-FILE		*f;
-static char	 buf[128];
-size_t		 len;
-
-	if ((f = fopen(SECRET, "r")) == NULL) {
-		(void) fprintf(stderr,
-			"setpass: cannot open LDAP secret: %s\n",
-			strerror(errno));
-		return NULL;
-	}
-
-	if (fgets(buf, sizeof buf, f) == NULL) {
-		(void) fprintf(stderr,
-			"setpass: cannot read LDAP secret: %s\n",
-			strerror(errno));
-		return NULL;
-	}
-
-	fclose(f);
-
-	len = strlen(buf);
-	if (len && buf[len - 1] == '\n')
-		buf[len - 1] = '\0';
-
-	return buf;
-}
-
 static int
 check_utmp(username)
 	const char *username;
@@ -171,26 +134,24 @@ char		*tty;
 int
 main(argc, argv)
 	int argc;
-	char **argv
-#ifdef __GNUC__
-	__attribute__((unused))
-#endif
-	;
+	char **argv;
 {
 LDAP		*conn;
-char		*userdn;
-const char	*secret;
 struct passwd	*pwd;
-int		 err;
-char		*attrs[2];
-LDAPMessage	*result, *ent;
-char		**vals;
-char		*email;
+char		*email, *curpass;
+
+	(void) argv;
 
 	/*
-	 * At this point we're running as root.  This is necessary to create
-	 * the token directory.
+	 * Drop all privileges except DAC override, which we need to
+	 * access the token directory.
 	 */
+        priv_set(PRIV_SET, PRIV_LIMIT, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, NULL);
+        priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, NULL);
+        priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL);
+        priv_set(PRIV_SET, PRIV_INHERITABLE, NULL);
+
+	/* Create the token directory while we're root */
 	umask(07);
 
 	if (mkdir(TOKENDIR, 0770) == -1 && errno != EEXIST) {
@@ -204,29 +165,13 @@ char		*email;
 		return 1;
 	}
 
-	/* Now we're running setgid root */
-
 	if (argc != 1) {
 		(void) fprintf(stderr, "usage: resetpass\n");
 		return 1;
 	}
 
-	if ((conn = ldap_init(SERVER, PORT)) == NULL) {
-		(void) fprintf(stderr,
-			"resetpass: cannot connect to LDAP server: %s:%d: %s\n",
-			SERVER, PORT, strerror(errno));
+	if ((conn = ldap_connect_priv()) == NULL)
 		return 1;
-	}
-
-	if ((secret = get_ldap_secret()) == NULL)
-		return 1;
-
-	if ((err = ldap_simple_bind_s(conn, ADMIN_DN, secret)) != 0) {
-		(void) fprintf(stderr,
-			"resetpass: cannot bind as %s: %s\n",
-			ADMIN_DN, ldap_err2string(err));
-		return 1;
-	}
 
 	if (!isatty(0) || !isatty(1) || !isatty(2)) {
 		(void) fprintf(stderr, "resetpass: must be run from a terminal\n");
@@ -243,95 +188,57 @@ char		*email;
 		return 1;
 	}
 
-	asprintf(&userdn, "uid=%s,%s", pwd->pw_name, BASE_DN);
-
-	/*
-	 * If the user's password is not set, don't allow it to be reset.
-	 */
-	attrs[0] = "userPassword";
-	attrs[1] = NULL;
-	err = ldap_search_s(conn, userdn, LDAP_SCOPE_BASE,
-			"(objectclass=posixAccount)",
-			attrs, 0, &result);
-	if (err) {
-		ldap_perror(conn,
-			"resetpass: retrieving current userPassword");
+	if (ldap_user_get_attr(conn, pwd->pw_name, "userPassword", &curpass) < 0)
 		return 1;
-	}
 
-	if ((ent = ldap_first_entry(conn, result)) == NULL) {
-		(void) fprintf(stderr,
-			"resetpass: no result when looking for current userPassword\n");
-		return 1;
-	}
-
-	if ((vals = ldap_get_values(conn, ent, "userPassword")) == NULL
-	    || vals[0] == NULL) {
-		(void) fprintf(stderr,
-			"resetpass: object has no userPassword\n");
-		return 1;
-	}
-
-	if (!strcmp(vals[0], "{crypt}!")) {
+	if (!curpass || !strcmp(curpass, "{crypt}!")) {
 		(void) fprintf(stderr, "resetpass: password not set\n");
 		(void) fprintf(stderr, "resetpass: use setpass(1) to set your password\n");
 		return 1;
 	}
 
-	/*
-	 * Fetch the user's email address.
-	 */
-	attrs[0] = "mail";
-	attrs[1] = NULL;
-	err = ldap_search_s(conn, userdn, LDAP_SCOPE_BASE,
-			"(objectclass=posixAccount)",
-			attrs, 0, &result);
-	if (err) {
-		ldap_perror(conn,
-			"resetpass: retrieving email address");
-		return 1;
-	}
+	bzero(curpass, strlen(curpass));
+	free(curpass);
 
-	if ((ent = ldap_first_entry(conn, result)) == NULL) {
-		(void) fprintf(stderr,
-			"resetpass: no result when looking for email address\n");
+	if (ldap_user_get_attr(conn, pwd->pw_name, "mail", &email) < 0)
 		return 1;
-	}
 
-	if ((vals = ldap_get_values(conn, ent, "mail")) == NULL
-	    || vals[0] == NULL) {
+	if (!email) {
 		(void) fprintf(stderr,
 			"resetpass: you don't have an email address set.\n");
 		(void) fprintf(stderr,
 			"resetpass: use setmail(1) before running this program.\n");
 		return 1;
 	}
-	email = strdup(vals[0]);
 
 	if (!validate_token(pwd->pw_name, email))
 		return 0;
 	else
-		if (set_password(conn, userdn) != 0) {
+		if (set_password(conn, pwd->pw_name) != 0) {
 			(void) fprintf(stderr, "resetpass: re-run to try again\n");
 			return 1;
 		} else {
-			/* Remove the token */
 		int	d;
+			/* Remove the token */
+			priv_set(PRIV_ON, PRIV_EFFECTIVE,
+				PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_READ, NULL);
 			if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
 				perror("resetpass: internal error (remove token)");
 				return 1;
 			}
 
 			unlinkat(d, pwd->pw_name, 0);
+			priv_set(PRIV_OFF, PRIV_EFFECTIVE, 
+				PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_READ, NULL);
 		}
 
 	return 0;
 }
 
 static int
-set_password(conn, userdn)
+set_password(conn, username)
 	LDAP		*conn;
-	const char	*userdn;
+	const char	*username;
 {
 char		*attrs[2];
 LDAPMod		 mod;
@@ -339,35 +246,21 @@ LDAPMod		*mods[2];
 char		 newpass[128], verify[128], *s;
 int		 err;
 
-	if ((s = getpass("Enter new password: ")) == NULL)
+	if ((s = ts_getpass("Enter new password: ")) == NULL)
 		return 1;
-	strncpy(newpass, s, sizeof(newpass));
-	newpass[sizeof(newpass) - 1] = 0;
+	strlcpy(newpass, s, sizeof(newpass));
 
-	if ((s = getpass("Re-enter password: ")) == NULL)
+	if ((s = ts_getpass("Re-enter password: ")) == NULL)
 		return 1;
-	strncpy(verify, s, sizeof(verify));
-	verify[sizeof(verify) - 1] = 0;
+	strlcpy(newpass, s, sizeof(newpass));
 
 	if (strcmp(newpass, verify)) {
 		(void) fprintf(stderr, "resetpass: passwords don't match\n");
 		return 1;
 	}
 
-	memset(&mod, 0, sizeof(mod));
-	mod.mod_op = LDAP_MOD_REPLACE;
-	mod.mod_type = "userPassword";
-	attrs[0] = newpass;
-	attrs[1] = NULL;
-	mod.mod_values = attrs;
-
-	mods[0] = &mod;
-	mods[1] = NULL;
-
-	if ((err = ldap_modify_s(conn, userdn, mods)) != 0) {
-		ldap_perror(conn, "resetpass: setting new password");
+	if (ldap_user_replace_attr(conn, username, "userPassword", newpass) < 0)
 		return 1;
-	}
 
 	(void) fprintf(stderr, "resetpass: new password successfully set\n");
 	return 0;
@@ -383,12 +276,15 @@ char		 tfmt[128];
 int		 d = -1, f = -1;
 char		 token[TOKENSZ + 1] = { 0 };
 
+	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
 	if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
 		perror("resetpass: internal error (open tokendir)");
+		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
 		goto err;
 	}
 
 	if ((f = openat(d, username, O_RDONLY)) == -1) {
+		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
 		if (errno != ENOENT) {
 			perror("resetpass: internal error (read token)");
 			goto err;
@@ -406,6 +302,8 @@ char		 token[TOKENSZ + 1] = { 0 };
 		return 0;
 	} else {
 	char	*try;
+		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+
 		/* Found the token; verify the user knows it. */
 
 		if (fstat(f, &sb) == -1) {
@@ -432,7 +330,10 @@ char		 token[TOKENSZ + 1] = { 0 };
 		printf("\n");
 
 		if (!*try) {
+			priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
 			unlinkat(d, username, 0);
+			priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
+
 			if (generate_token(username, email) < 0)
 				(void) fprintf(stderr, "resetpass: internal error sending token\n");
 			goto err;
@@ -468,20 +369,24 @@ uid_t		 olduid;
 char		*msg;
 int		 status;
 
-	if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
-		perror("resetpass: internal error (open token directory)");
-		goto err;
-	}
-
-	if ((f = openat(d, username, O_WRONLY | O_CREAT | O_EXCL, 0770)) == -1) {
-		perror("resetpass: internal error (write token");
-		goto err;
-	}
-
 	if ((ntok = mktoken()) == NULL) {
 		perror("resetpass: internal error (create token)");
 		goto err;
 	}
+
+	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+	if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
+		perror("resetpass: internal error (open token directory)");
+		goto err;
+	}
+	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+
+	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
+	if ((f = openat(d, username, O_WRONLY | O_CREAT | O_EXCL, 0770)) == -1) {
+		perror("resetpass: internal error (write token");
+		goto err;
+	}
+	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
 
 	if (write(f, ntok, strlen(ntok)) < (ssize_t) strlen(ntok)) {
 		perror("resetpass: internal error (write token)");
@@ -498,11 +403,6 @@ int		 status;
 	 * We need root access back to send the password mail, so that
 	 * sendmail runs as root and can't be intercepted by the user.
 	 */
-	if (seteuid(0) == -1) {
-		perror("resetpass: internal error (seteuid)");
-		_exit(1);
-	}
-
 	if (setuid(0) == -1) {
 		perror("resetpass: internal error (setuid)");
 		_exit(1);
@@ -516,7 +416,7 @@ int		 status;
 	};
 	char const * const args[] = {
 		"/usr/lib/sendmail",
-		"-oi", "-bm", "--", username,
+		"-oi", "-bm", "--", email,
 		NULL
 	};
 		chdir("/");
@@ -537,11 +437,6 @@ int		 status;
 	}
 
 	/* Drop root again */
-	if (setuid(olduid) == -1) {
-		perror("resetpass: internal error (setuid)");
-		_exit(1);
-	}
-
 	if (seteuid(olduid) == -1) {
 		perror("resetpass: internal error (seteuid)");
 		_exit(1);

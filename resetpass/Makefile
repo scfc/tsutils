@@ -1,9 +1,13 @@
 PROG		= resetpass
-BINMODE		= 6711
+BINMODE		= 4711
 GROUP		= root
 
 SRCS		= resetpass.c
 OBJS		= $(SRCS:.c=.o)
 LIBS		= -lldap -lreadline
+
+# No setuid tools on Linux
+SKIP		= Linux
+LIBTSUTILS	= YES
 
 include ../mk/prog.mk

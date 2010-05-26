@@ -12,6 +12,8 @@
 #include	<fcntl.h>
 #include	<stdlib.h>
 
+#include	"tsutils.h"
+
 int
 main(argc, argv)
 	int argc;
@@ -32,11 +34,7 @@ main(argc, argv)
 		return 1;
 	}
 
-#if defined(__sun) && defined(__SVR4)
-	if ((p = getpassphrase(argv[1])) == NULL) {
-#else
-	if ((p = getpass(argv[1])) == NULL) {
-#endif
+	if ((p = ts_getpass(argv[1])) == NULL) {
 		perror("getpass");
 		return 1;
 	}

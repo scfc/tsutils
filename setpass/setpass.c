@@ -1,12 +1,38 @@
-/* Copyright (c) 2008 River Tarnell <river@wikimedia.org>. */
 /*
- * Permission is granted to anyone to use this software for any purpose,
- * including commercial applications, and to alter it and redistribute it
- * freely. This software is provided 'as-is', without any express or implied
- * warranty.
+ *  Copyright (c) 2008, River Tarnell.
+ *  Copyright (c) 2010, Wikimedia Deutschland (River Tarnell)
+ *  All rights reserved.
+ * 
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions are met:
+ *      * Redistributions of source code must retain the above copyright
+ *        notice, this list of conditions and the following disclaimer.
+ *      * Redistributions in binary form must reproduce the above copyright
+ *        notice, this list of conditions and the following disclaimer in the
+ *        documentation and/or other materials provided with the distribution.
+ *      * Neither the name of Wikimedia Deutschland nor the
+ *        names of its contributors may be used to endorse or promote products
+ *        derived from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY WIKIMEDIA DEUTSCHLAND ''AS IS'' AND ANY
+ *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ *  DISCLAIMED. IN NO EVENT SHALL WIKIMEDIA DEUTSCHLAND BE LIABLE FOR ANY
+ *  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ *  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ *  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * NOTE: This software is not released as a product. It was written primarily for
+ * Wikimedia Deutschland's own use, and is made public as is, in the hope it may
+ * be useful. Wikimedia Deutschland may at any time discontinue developing or
+ * supporting this software. There is no guarantee any new versions or even fixes
+ * for security issues will be released.
  */
 
-/* $Id: setpass.c 48048 2009-03-05 05:14:56Z river $ */
+/* $Id$ */
 
 /*
  * setpass: set initial LDAP password.
@@ -25,64 +51,7 @@
 
 #include	<ldap.h>
 
-#define SERVER		"ldap.toolserver.org"
-#define PORT		LDAP_PORT
-#define SECRET		"/etc/ldap_secret"
-#define ADMIN_DN 	"cn=Directory Manager"
-#define BASE_DN		"ou=People,o=unix,o=toolserver"
-
-#if defined(__sun) && defined(__SVR4)
-# define getpass getpassphrase
-#endif
-
-#if defined(__sun) && defined(__SVR4)
-int
-asprintf(char **strp, char const *fmt, ...)
-{
-va_list ap;
-int     len;
-	va_start(ap, end);
-	if ((len = vsnprintf(NULL, 0, fmt, ap)) < 0)
-		return -1;
-	if ((*strp = malloc(len + 1)) == NULL)
-		return -1;
-	if ((len = vsnprintf(*strp, len + 1, fmt, ap)) < 0) {
-		free(*strp);
-		return -1;
-	}
-	return len;
-}
-#endif
-
-char *
-get_ldap_secret(void)
-{
-FILE		*f;
-static char	 buf[128];
-size_t		 len;
-
-	if ((f = fopen(SECRET, "r")) == NULL) {
-		(void) fprintf(stderr,
-			"setpass: cannot open LDAP secret: %s\n",
-			strerror(errno));
-		return NULL;
-	}
-
-	if (fgets(buf, sizeof buf, f) == NULL) {
-		(void) fprintf(stderr,
-			"setpass: cannot read LDAP secret: %s\n",
-			strerror(errno));
-		return NULL;
-	}
-
-	fclose(f);
-
-	len = strlen(buf);
-	if (len && buf[len - 1] == '\n')
-		buf[len - 1] = '\0';
-
-	return buf;
-}
+#include	"tsutils.h"
 
 int
 check_utmp(char *username)
@@ -110,48 +79,39 @@ char		*tty;
 int
 main(argc, argv)
 	int argc;
-	char **argv
-#ifdef __GNUC__
-	__attribute__((unused))
-#endif
-	;
+	char **argv;
 {
 LDAP		*conn;
-char		*secret, *userdn;
 struct passwd	*pwd;
-int		 err;
-char		*attrs[2];
-LDAPMessage	*result, *ent;
-char		**vals;
-LDAPMod		 mod;
-LDAPMod		*mods[2];
 char		 newpass[128], verify[128], *s;
+char		*curpass;
+
+	(void) argv;
 
 	if (argc != 1) {
 		(void) fprintf(stderr, "usage: setpass\n");
 		return 1;
 	}
 
-	if ((conn = ldap_init(SERVER, PORT)) == NULL) {
-		(void) fprintf(stderr,
-			"setpass: cannot connect to LDAP server: %s:%d: %s\n",
-			SERVER, PORT, strerror(errno));
+	/*
+	 * Drop all privileges, but leave DAC read in the permitted set.  This
+	 * is needed to read the LDAP password.
+	 */
+	priv_set(PRIV_SET, PRIV_LIMIT, PRIV_FILE_DAC_READ, NULL);
+	priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, NULL);
+	priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL);
+	priv_set(PRIV_SET, PRIV_INHERITABLE, NULL);
+
+	if (setuid(getuid()) == -1) {
+		perror("setpass: setuid");
 		return 1;
 	}
 
-	if ((secret = get_ldap_secret()) == NULL)
+	if ((conn = ldap_connect_priv()) == NULL)
 		return 1;
 
-	setegid(getgid());
-
-	if ((err = ldap_simple_bind_s(conn, ADMIN_DN, secret)) != 0) {
-		(void) fprintf(stderr,
-			"setpass: cannot bind as %s: %s\n",
-			ADMIN_DN, ldap_err2string(err));
-		return 1;
-	}
-
-	memset(secret, 0, strlen(secret));
+	/* We no longer need any privileges */
+	priv_set(PRIV_SET, PRIV_LIMIT, NULL);
 
 	if (!isatty(0) || !isatty(1) || !isatty(2)) {
 		(void) fprintf(stderr, "setpass: must be run from a terminal\n");
@@ -168,72 +128,42 @@ char		 newpass[128], verify[128], *s;
 		return 1;
 	}
 
-	asprintf(&userdn, "uid=%s,%s", pwd->pw_name, BASE_DN);
-
 	/*
 	 * Make sure the user's password is currently {crypt}!, i.e. not set.  
 	 * Users who already have a password should use passwd(1) instead of 
 	 * this program.
 	 */
-	attrs[0] = "userPassword";
-	attrs[1] = NULL;
-	err = ldap_search_s(conn, userdn, LDAP_SCOPE_BASE,
-			"(objectclass=posixAccount)",
-			attrs, 0, &result);
-	if (err) {
-		ldap_perror(conn,
-			"setpass: retrieving current userPassword");
+	if (ldap_user_get_attr(conn, pwd->pw_name, "userPassword", &curpass))
+		return 1;
+
+	if (!curpass) {
+		(void) fprintf(stderr, "setpass: no result when looking for current userPassword\n");
 		return 1;
 	}
 
-	if ((ent = ldap_first_entry(conn, result)) == NULL) {
-		(void) fprintf(stderr,
-			"setpass: no result when looking for current userPassword\n");
-		return 1;
-	}
-
-	if ((vals = ldap_get_values(conn, ent, "userPassword")) == NULL
-	    || vals[0] == NULL) {
-		(void) fprintf(stderr,
-			"setpass: object has no userPassword\n");
-		return 1;
-	}
-
-	if (strcmp(vals[0], "{crypt}!")) {
+	if (strcmp(curpass, "{crypt}!")) {
 		(void) fprintf(stderr, "setpass: password already set\n");
 		(void) fprintf(stderr, "setpass: use passwd(1) to change your password\n");
 		return 1;
 	}
 
-	if ((s = getpass("Enter new password: ")) == NULL)
+	if ((s = ts_getpass("Enter new password: ")) == NULL)
 		return 1;
-	strncpy(newpass, s, sizeof(newpass));
+	(void) strncpy(newpass, s, sizeof(newpass));
 	newpass[sizeof(newpass) - 1] = 0;
 
-	if ((s = getpass("Re-enter password: ")) == NULL)
+	if ((s = ts_getpass("Re-enter password: ")) == NULL)
 		return 1;
-	strncpy(verify, s, sizeof(verify));
-	newpass[sizeof(newpass) - 1] = 0;
+	(void) strncpy(verify, s, sizeof(verify));
+	verify[sizeof(verify) - 1] = 0;
 
 	if (strcmp(newpass, verify)) {
 		(void) fprintf(stderr, "setpass: passwords don't match\n");
 		return 1;
 	}
 
-	memset(&mod, 0, sizeof(mod));
-	mod.mod_op = LDAP_MOD_REPLACE;
-	mod.mod_type = "userPassword";
-	attrs[0] = newpass;
-	mod.mod_values = attrs;
-
-	mods[0] = &mod;
-	mods[1] = NULL;
-
-	if ((err = ldap_modify_s(conn, userdn, mods)) != 0) {
-		ldap_perror(conn, "setpass: setting new password");
+	if (ldap_user_replace_attr(conn, pwd->pw_name, "userPassword", newpass) == -1)
 		return 1;
-	}
-
-	(void) fprintf(stderr, "setpass: new password successfully set\n");
-	return 0;
+	else
+		return 0;
 }

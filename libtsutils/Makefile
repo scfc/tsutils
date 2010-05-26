@@ -1,5 +1,5 @@
 LIB	= tsutils
-SRCS	= tsutils.c mail.c write.c subst.c
+SRCS	= tsutils.c mail.c write.c subst.c ldap.c security.c
 OBJS	= $(SRCS:.c=.o)
 
 ifeq ($(shell uname),SunOS)

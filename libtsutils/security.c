@@ -34,128 +34,79 @@
 
 /* $Id$ */
 
-#include	<sys/mman.h>
-#include	<sys/stat.h>
 #include	<fcntl.h>
-#include	<stdlib.h>
-#include	<string.h>
-#include	<stdarg.h>
-#include	<syslog.h>
-#include	<stdio.h>
+#include	<termios.h>
+#include	<strings.h>
 #include	<unistd.h>
-#include	"tsutils.h"
+#include	<stdio.h>
 
 char *
-realloc_strncat(str, add, len)
-	char *str;
-	char const *add;
-	size_t len;
+ts_getpass(prompt)
+	const char	*prompt;
 {
-size_t	 newlen;
+int		tt;
+char		c;
+#define MAXPASS	128
+static char	pass[MAXPASS + 1];
+int		n = 0, i = 0;
+struct termios	nt, ot;
 
-	newlen = len;
-	if (str)
-		newlen += strlen(str);
-	str = realloc(str, newlen + 1);
-	(void) strncat(str, add, len);
-	return str;
-}
+	if (prompt)
+		(void) fputs(prompt, stdout);
 
-char *
-realloc_strcat(str, add)
-	char *str;
-	char const *add;
-{
-	return realloc_strncat(str, add, strlen(add));
-}
-
-void
-strdup_free(s, new)
-	char **s;
-	char const *new;
-{
-	if (*s)
-		free(*s);
-
-	*s = strdup(new);
-}
-
-static int foreground = 1;
-
-void
-logmsg(char const *msg, ...)
-{
-va_list	ap;
-	va_start(ap, msg);
-
-	if (foreground) {
-		(void) vfprintf(stderr, msg, ap);
-		(void) fputs("\n", stderr);
-	} else
-		vsyslog(LOG_NOTICE, msg, ap);
-
-	va_end(ap);
-}
-
-int
-daemon_detach(progname)
-	char const *progname;
-{
-	if (daemon(0, 0) < 0)
-		return -1;
-	openlog(progname, LOG_PID, LOG_DAEMON);
-	foreground = 0;
-	return 0;
-}
-
-char *
-file_to_string(path)
-	char const *path;
-{
-int		 i;
-void		*addr;
-struct stat	 st;
-char		*str;
-
-	if ((i = open(path, O_RDONLY)) == -1) {
+	if ((tt = open("/dev/tty", O_RDWR)) == -1)
 		return NULL;
+
+	if (tcgetattr(tt, &ot) == -1)
+		return NULL;
+	bcopy(&ot, &nt, sizeof(nt));
+	nt.c_lflag &= ~(ICANON | ECHO);
+	nt.c_cc[VMIN] = 1;
+	nt.c_cc[VTIME] = 0;
+	if (tcsetattr(tt, TCSAFLUSH, &nt) == -1)
+		return NULL;
+
+	bzero(pass, sizeof (pass));
+
+	while (read(tt, &c, 1) == 1) {
+		switch (c) {
+		case '\r':
+		case '\n':
+
+			for (i = 0; i < n; ++i)
+				(void) putc('\b', stdout);
+			for (i = 0; i < n; ++i)
+				(void) putc(' ', stdout);
+			(void) tcsetattr(tt, TCSAFLUSH, &ot);
+			(void) close(tt);
+			(void) putc('\n', stdout);
+			(void) fflush(stdout);
+			return pass;
+
+		case 0x7F:	/* DEL */
+		case 0x10:	/* ^H */
+			if (n == 0) {
+				(void) write(tt, "\a", 1);
+				break;
+			}
+
+			pass[--n] = 0;
+			(void) write(tt, "\b \b", 3);
+			break;
+
+		default:
+			if (n == MAXPASS) {
+				(void) write(tt, "\a", 1);
+				break;
+			}
+
+			pass[n++] = c;
+			(void) write(tt, "*", 1);
+			break;
+		}
 	}
 
-	if (fstat(i, &st) == -1) {
-		(void) close(i);
-		return NULL;
-	}
-
-	if ((addr = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, i, 0)) == MAP_FAILED) {
-		(void) close(i);
-		return NULL;
-	}
-
-	str = malloc(st.st_size + 1);
-	(void) memcpy(str, addr, st.st_size);
-	str[st.st_size] = '\0';
-
-	(void) munmap(addr, st.st_size);
-	(void) close(i);
-
-	return str;
+	(void) tcsetattr(tt, TCSAFLUSH, &ot);
+	(void) close(tt);
+	return NULL;
 }
-
-#if defined(__sun) && defined(__SVR4)
-int
-asprintf(char **strp, char const *fmt, ...)
-{
-va_list ap;
-int     len;
-       va_start(ap, fmt);
-       if ((len = vsnprintf(NULL, 0, fmt, ap)) < 0)
-               return -1;
-       if ((*strp = malloc(len + 1)) == NULL)
-               return -1;
-       if ((len = vsnprintf(*strp, len + 1, fmt, ap)) < 0) {
-               free(*strp);
-               return -1;
-       }
-       return len;
-}
-#endif

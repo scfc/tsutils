@@ -1,6 +1,6 @@
 /*
  * Print all expired accounts.
- * $Id: lsexp.c 21740 2007-05-01 00:39:42Z river $
+ * $Id$
  */
 
 #ifdef __FreeBSD__

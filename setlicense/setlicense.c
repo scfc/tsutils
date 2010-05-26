@@ -49,72 +49,16 @@
 #include	<stdarg.h>
 
 #include	<ldap.h>
-
 #include	<readline/readline.h>
 
-#define SERVER		"ldap.toolserver.org"
-#define PORT		LDAP_PORT
-#define BASE_DN		"ou=People,o=unix,o=toolserver"
-
-#if defined(__sun) && defined(__SVR4)
-# define getpass getpassphrase
-#endif
-
-#if defined(__sun) && defined(__SVR4)
-int
-asprintf(char **strp, char const *fmt, ...)
-{
-va_list	ap;
-int	len;
-	va_start(ap, end);
-	if ((len = vsnprintf(NULL, 0, fmt, ap)) < 0)
-		return -1;
-	if ((*strp = malloc(len + 1)) == NULL)
-		return -1;
-	if ((len = vsnprintf(*strp, len + 1, fmt, ap)) < 0) {
-		free(*strp);
-		return -1;
-	}
-	return len;
-}
-#endif
-
-char *
-get_ldap_secret(void)
-{
-static	char *secret;
-	char *pw;
-
-	if ((pw = getpass("Enter LDAP password: ")) == NULL) {
-		(void) fprintf(stderr,
-			"setlicense: cannot read LDAP password\n");
-		return NULL;
-	}
-
-	secret = strdup(pw);
-	return secret;
-}
+#include	"tsutils.h"
 
 int
 main()
 {
 LDAP		*conn;
-char		*secret, *userdn;
 struct passwd	*pwd;
-int		 err;
-char		*attrs[2];
-LDAPMessage	*result, *ent;
-char		**vals;
-LDAPMod		 mod;
-LDAPMod		*mods[2];
-char		*input, *newlicense;
-
-	if ((conn = ldap_init(SERVER, PORT)) == NULL) {
-		(void) fprintf(stderr,
-			"setlicense: cannot connect to LDAP server: %s:%d: %s\n",
-			SERVER, PORT, strerror(errno));
-		return 1;
-	}
+char		*input, *curlic, *newlic;
 
 	if ((pwd = getpwuid(getuid())) == NULL) {
 		(void) fprintf(stderr, "setlicense: you don't exist\n");
@@ -131,47 +75,16 @@ char		*input, *newlicense;
 "\n"
 	);
 
-	asprintf(&userdn, "uid=%s,%s", pwd->pw_name, BASE_DN);
-	
-	(void) printf("User DN: %s\n", userdn);
-
-	if ((secret = get_ldap_secret()) == NULL)
+	if ((conn = ldap_connect()) == NULL)
 		return 1;
 
-	if ((err = ldap_simple_bind_s(conn, userdn, secret)) != 0) {
-		(void) fprintf(stderr,
-			"setlicense: cannot bind as %s: %s\n",
-			userdn, ldap_err2string(err));
+	if (ldap_user_get_attr(conn, pwd->pw_name, "tsDefaultLicense", &curlic) < 0)
 		return 1;
-	}
 
-	memset(secret, 0, strlen(secret));
-
-	/*
-	 * Print the user's existing license.
-	 */
-	attrs[0] = "tsDefaultLicense";
-	attrs[1] = NULL;
-	err = ldap_search_s(conn, userdn, LDAP_SCOPE_BASE,
-			"(objectclass=posixAccount)",
-			attrs, 0, &result);
-	if (err) {
-		ldap_perror(conn,
-			"setlicense: retrieving current license");
-		return 1;
-	}
-
-	if ((ent = ldap_first_entry(conn, result)) == NULL) {
-		(void) fprintf(stderr,
-			"setlicense: no result when looking for current license\n");
-		return 1;
-	}
-
-	if ((vals = ldap_get_values(conn, ent, "tsDefaultLicense")) == NULL
-	    || vals[0] == NULL) {
+	if (!curlic)
 		(void) printf("\nYou currently have no default license set.\n");
-	} else
-		(void) printf("\nYour current default license is: %s\n", vals[0]);
+	else
+		(void) printf("\nYour current default license is: %s\n", curlic);
 
 	if ((input = readline("Do you wish to change this license? (yes/no) ")) == NULL)
 		return 1;
@@ -192,28 +105,17 @@ char		*input, *newlicense;
 "\n"
 	);
 
-	if ((newlicense = readline("Enter new default license: ")) == NULL)
+	if ((newlic = readline("Enter new default license: ")) == NULL)
 		return 1;
 
-	(void) printf("\nYour new default license is: %s\n", newlicense);
+	(void) printf("\nYour new default license is: %s\n", newlic);
 	if ((input = readline("Continue? (yes/no) ")) == NULL)
 		return 1;
 	if (strcmp(input, "yes"))
 		return 0;
 
-	memset(&mod, 0, sizeof(mod));
-	mod.mod_op = LDAP_MOD_REPLACE;
-	mod.mod_type = "tsDefaultLicense";
-	attrs[0] = newlicense;
-	mod.mod_values = attrs;
-
-	mods[0] = &mod;
-	mods[1] = NULL;
-
-	if ((err = ldap_modify_s(conn, userdn, mods)) != 0) {
-		ldap_perror(conn, "setlicense: setting new license");
+	if (ldap_user_replace_attr(conn, pwd->pw_name, "tsDefaultLicense", newlic) < 0)
 		return 1;
-	}
 
 	(void) printf("setlicense: new license successfully set\n");
 	return 0;

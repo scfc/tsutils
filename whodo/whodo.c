@@ -6,7 +6,7 @@
  * warranty.
  */
 
-/* $Id: whodo.c 22465 2007-05-27 03:21:02Z river $ */
+/* $Id$ */
 
 /*
  * whodo: report logged in users and their activities.

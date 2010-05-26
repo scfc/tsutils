@@ -1,6 +1,6 @@
 /*
  * Print account expiry date.
- * $Id: acctexp.c 11210 2005-10-06 09:59:28Z kateturner $
+ * $Id$
  */
 
 #ifdef __FreeBSD__
@@ -58,7 +58,7 @@ struct tm	 *whentm;
 		(void) fprintf(stderr, "getspnam: %s\n", strerror(errno));
 		return 1;
 	}
-	(void) seteuid(getuid());
+	(void) setuid(getuid());
 	if (spwent->sp_expire == 0) {
 		return 0;
 	}

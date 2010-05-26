@@ -5,4 +5,6 @@ SRCS		= setlicense.c
 OBJS		= $(SRCS:.c=.o)
 LIBS		= -lldap -lreadline
 
+LIBTSUTILS	= YES
+
 include ../mk/prog.mk

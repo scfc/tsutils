@@ -1,6 +1,6 @@
 /*
  * Read a line from stdin using readline for line editing.
- * $Id: readline.c 48237 2009-03-09 18:43:07Z river $
+ * $Id$
  */
 
 #include	<stdio.h>
