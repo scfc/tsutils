@@ -54,8 +54,9 @@
 #include	<inttypes.h>
 #include	<time.h>
 #include	<strings.h>
-
 #include	<ldap.h>
+#include	<priv.h>
+
 #include	<readline/readline.h>
 
 #include	"tsutils.h"
@@ -146,12 +147,13 @@ char		*email, *curpass;
 	 * Drop all privileges except DAC override, which we need to
 	 * access the token directory.
 	 */
-        priv_set(PRIV_SET, PRIV_LIMIT, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE,
-			PRIV_PROC_FORK, PRIV_FILE_DAC_SEARCH, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL);
-        priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, 
-			PRIV_PROC_FORK, PRIV_FILE_DAC_SEARCH, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL);
-        priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL);
-        priv_set(PRIV_SET, PRIV_INHERITABLE, PRIV_PROC_EXEC, PRIV_PROC_FORK, PRIV_PROC_SETID, NULL);
+        if (priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, 
+			PRIV_PROC_FORK, PRIV_FILE_DAC_SEARCH, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL) == -1 ||
+            priv_set(PRIV_SET, PRIV_INHERITABLE, PRIV_PROC_FORK, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL) == -1 ||
+            priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL) == -1) {
+		perror("resetpass: priv_set");
+		return 1;
+	}
 
 	/* Create the token directory while we're root */
 	umask(07);

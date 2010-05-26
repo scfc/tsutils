@@ -48,7 +48,7 @@
 #include	<pwd.h>
 #include	<utmpx.h>
 #include	<stdarg.h>
-
+#include	<priv.h>
 #include	<ldap.h>
 
 #include	"tsutils.h"
@@ -97,10 +97,12 @@ char		*curpass;
 	 * Drop all privileges, but leave DAC read in the permitted set.  This
 	 * is needed to read the LDAP password.
 	 */
-	priv_set(PRIV_SET, PRIV_LIMIT, PRIV_FILE_DAC_READ, NULL);
-	priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, NULL);
-	priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL);
-	priv_set(PRIV_SET, PRIV_INHERITABLE, NULL);
+	if (priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, NULL) == -1 ||
+	    priv_set(PRIV_SET, PRIV_INHERITABLE, NULL) == -1 ||
+	    priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL) == -1) {
+		perror("setpass: priv_set");
+		return 1;
+	}
 
 	if (setuid(getuid()) == -1) {
 		perror("setpass: setuid");
@@ -111,7 +113,7 @@ char		*curpass;
 		return 1;
 
 	/* We no longer need any privileges */
-	priv_set(PRIV_SET, PRIV_LIMIT, NULL);
+	priv_set(PRIV_SET, PRIV_PERMITTED, NULL);
 
 	if (!isatty(0) || !isatty(1) || !isatty(2)) {
 		(void) fprintf(stderr, "setpass: must be run from a terminal\n");
