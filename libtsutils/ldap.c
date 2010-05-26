@@ -37,12 +37,18 @@
  * Utilities for connecting to the LDAP server.
  */
 
+#define LDAP_DEPRECATED 1
+#define _GNU_SOURCE
+
 #include	<stdio.h>
-#include	<priv.h>
 #include	<strings.h>
 #include	<errno.h>
 #include	<unistd.h>
+#include	<stdlib.h>
 #include	<pwd.h>
+#ifndef __linux__
+#include	<priv.h>
+#endif
 
 #include	<ldap.h>
 
@@ -54,6 +60,8 @@
 #define ADMIN_DN        "cn=Directory Manager"
 #define BASE_DN         "ou=People,o=unix,o=toolserver"
 
+
+#ifndef __linux__
 static char ldap_secret[128];
 
 const char *
@@ -63,8 +71,10 @@ FILE	*f;
 size_t	 len;
 
 	/* We require DAC_READ to open the secret file. */
-	if (priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL) == -1)
+	if (priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL) == -1) {
+		perror("get_ldap_secret: priv failure\n");
 		return NULL;
+	}
 
 	if ((f = fopen(SECRET, "r")) == NULL) {
 		perror("cannot open LDAP secret");
@@ -132,13 +142,14 @@ err:
 	clear_ldap_secret();
 	return NULL;
 }
+#endif	/* !__linux__ */
 
 LDAP *
 ldap_connect()
 {
 LDAP		*conn = NULL;
 int		 err;
-char		*password;
+char		*password = NULL;
 struct passwd	*pwd;
 char		*userdn = NULL;
 

@@ -101,8 +101,8 @@ int		 utfd;
 		if (utp == NULL) {
 			utp = calloc(1, sizeof(*utp));
 			(void) strncpy(utp->ute_host, ut->ut_host, sizeof(utp->ute_host) - 1);
-			if (ut->ut_host[sizeof(ut->ut_host)] != 0)
-				utp->ute_host[sizeof(ut->ut_host)] = 0;
+			if (ut->ut_host[sizeof(ut->ut_host) - 1] != 0)
+				utp->ute_host[sizeof(ut->ut_host) - 1] = 0;
 			utp->ute_next = ents.ute_next;
 			ents.ute_next = utp;
 		}

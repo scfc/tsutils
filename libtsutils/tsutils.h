@@ -39,7 +39,6 @@
 
 #include	<sys/types.h>
 #include	<ldap.h>
-#include	<priv.h>
 
 char	*realloc_strcat(char *str, char const *add);
 char	*realloc_strncat(char *str, char const *add, size_t len);
@@ -64,7 +63,9 @@ void clear_ldap_secret(void);
 /* Connect to the LDAP server as the current user.  Prompts for a password. */
 LDAP *ldap_connect(void);
 /* Connect to the LDAP server as a privileged user */
+#ifndef __linux__
 LDAP *ldap_connect_priv(void);
+#endif
 
 /* Retrieve a single-value attribute from a user */
 int ldap_user_get_attr(LDAP *conn, const char *username, const char *attr, char **result);

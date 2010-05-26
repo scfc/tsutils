@@ -25,12 +25,8 @@
 #else
 # define getspent getpwent
 # define sp_expire pw_expire
-# define sp_name pw_name
+# define sp_namp pw_name
 # define spwd passwd
-#endif
-
-#if defined(__sun) && defined(__SVR4)
-# define sp_name sp_namp
 #endif
 
 int
@@ -50,7 +46,7 @@ time_t		 when, now;
 		if (when > now)
 			continue;
 
-		(void) printf("%s\n", spwent->sp_name);
+		(void) printf("%s\n", spwent->sp_namp);
 	}
 
 	return 0;

@@ -146,10 +146,12 @@ char		*email, *curpass;
 	 * Drop all privileges except DAC override, which we need to
 	 * access the token directory.
 	 */
-        priv_set(PRIV_SET, PRIV_LIMIT, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, NULL);
-        priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, NULL);
+        priv_set(PRIV_SET, PRIV_LIMIT, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE,
+			PRIV_PROC_FORK, PRIV_FILE_DAC_SEARCH, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL);
+        priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, 
+			PRIV_PROC_FORK, PRIV_FILE_DAC_SEARCH, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL);
         priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL);
-        priv_set(PRIV_SET, PRIV_INHERITABLE, NULL);
+        priv_set(PRIV_SET, PRIV_INHERITABLE, PRIV_PROC_EXEC, PRIV_PROC_FORK, PRIV_PROC_SETID, NULL);
 
 	/* Create the token directory while we're root */
 	umask(07);
@@ -220,16 +222,16 @@ char		*email, *curpass;
 		} else {
 		int	d;
 			/* Remove the token */
-			priv_set(PRIV_ON, PRIV_EFFECTIVE,
-				PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_READ, NULL);
+			priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 			if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
 				perror("resetpass: internal error (remove token)");
 				return 1;
 			}
+			priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 
+			seteuid(0);
 			unlinkat(d, pwd->pw_name, 0);
-			priv_set(PRIV_OFF, PRIV_EFFECTIVE, 
-				PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_READ, NULL);
+			seteuid(getuid());
 		}
 
 	return 0;
@@ -252,7 +254,7 @@ int		 err;
 
 	if ((s = ts_getpass("Re-enter password: ")) == NULL)
 		return 1;
-	strlcpy(newpass, s, sizeof(newpass));
+	strlcpy(verify, s, sizeof(verify));
 
 	if (strcmp(newpass, verify)) {
 		(void) fprintf(stderr, "resetpass: passwords don't match\n");
@@ -276,15 +278,15 @@ char		 tfmt[128];
 int		 d = -1, f = -1;
 char		 token[TOKENSZ + 1] = { 0 };
 
-	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 	if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
 		perror("resetpass: internal error (open tokendir)");
-		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 		goto err;
 	}
 
 	if ((f = openat(d, username, O_RDONLY)) == -1) {
-		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 		if (errno != ENOENT) {
 			perror("resetpass: internal error (read token)");
 			goto err;
@@ -302,7 +304,7 @@ char		 token[TOKENSZ + 1] = { 0 };
 		return 0;
 	} else {
 	char	*try;
-		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 
 		/* Found the token; verify the user knows it. */
 
@@ -330,12 +332,17 @@ char		 token[TOKENSZ + 1] = { 0 };
 		printf("\n");
 
 		if (!*try) {
-			priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
-			unlinkat(d, username, 0);
-			priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
+			/* There's no privilege to allow deleting a file... */
+			seteuid(0);
+			if (unlinkat(d, username, 0) == -1) {
+				seteuid(getuid());
+				perror("resetpass: internal error removing token");
+				goto err;
+			}
+			seteuid(getuid());
 
 			if (generate_token(username, email) < 0)
-				(void) fprintf(stderr, "resetpass: internal error sending token\n");
+				perror("resetpass: internal error sending token");
 			goto err;
 		}
 
@@ -367,7 +374,7 @@ const char	*ntok;
 int		 fds[2];
 uid_t		 olduid;
 char		*msg;
-int		 status;
+int		 status, pid;
 
 	if ((ntok = mktoken()) == NULL) {
 		perror("resetpass: internal error (create token)");
@@ -381,12 +388,14 @@ int		 status;
 	}
 	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
 
-	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
+	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_SEARCH, NULL);
+	seteuid(0);
 	if ((f = openat(d, username, O_WRONLY | O_CREAT | O_EXCL, 0770)) == -1) {
-		perror("resetpass: internal error (write token");
+		perror("resetpass: internal error (open token)");
 		goto err;
 	}
-	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, NULL);
+	seteuid(getuid());
+	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_SEARCH, NULL);
 
 	if (write(f, ntok, strlen(ntok)) < (ssize_t) strlen(ntok)) {
 		perror("resetpass: internal error (write token)");
@@ -408,7 +417,14 @@ int		 status;
 		_exit(1);
 	}
 
-	switch (fork()) {
+	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_PROC_FORK, NULL);
+	pid = fork();
+	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_PROC_FORK, NULL);
+
+	/*
+	 * Note: leave PRIV_PROC_FORK enabled for the child
+	 */
+	switch (pid) {
 	case 0: { /* child */
 	char const * const env[] = {
 		"PATH=/usr/bin",
@@ -424,6 +440,7 @@ int		 status;
 		close(fds[0]);
 		close(fds[1]);
 
+		priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_PROC_FORK, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL);
 		execve("/usr/lib/sendmail", (char *const *) args, (char *const *) env);
 		_exit(1);
 	}
