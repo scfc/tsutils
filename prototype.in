@@ -34,6 +34,9 @@ f none %prefix%/share/man/man1/resetpass.1=%PWD%/stage/%prefix%/share/man/man1/r
 f none %prefix%/bin/acctexp=%PWD%/stage/%prefix%/bin/acctexp 4711
 f none %prefix%/share/man/man1/acctexp.1=%PWD%/stage/%prefix%/share/man/man1/acctexp.1
 
+f none %prefix%/bin/acctrenew=%PWD%/stage/%prefix%/bin/acctrenew 4711
+f none %prefix%/share/man/man1/acctrenew.1=%PWD%/stage/%prefix%/share/man/man1/acctrenew.1
+
 f none %prefix%/sbin/watcherd=%PWD%/stage/%prefix%/sbin/watcherd
 f none %prefix%/sbin/lsexp=%PWD%/stage/%prefix%/sbin/lsexp
 f none %prefix%/bin/summdisk=%PWD%/stage/%prefix%/bin/summdisk

@@ -14,7 +14,8 @@ SUBDIRS		= \
 	getpasstofile	\
 	summdisk	\
 	setlicense	\
-	resetpass
+	resetpass	\
+	acctrenew
 MAKEFLAGS	= --no-print-directory
 
 include config.mk
