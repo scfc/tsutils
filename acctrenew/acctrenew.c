@@ -93,7 +93,7 @@ char		*email, *license;
 	(void) argv;
 
 	if (argc != 1) {
-		(void) fprintf(stderr, "usage: setpass\n");
+		(void) fprintf(stderr, "usage: acctrenew\n");
 		return 1;
 	}
 
@@ -104,7 +104,7 @@ char		*email, *license;
 	if (priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_PROC_FORK, PRIV_PROC_EXEC, NULL) == -1 ||
 	    priv_set(PRIV_SET, PRIV_INHERITABLE, PRIV_PROC_FORK, PRIV_PROC_EXEC, NULL) == -1 ||
 	    priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL) == -1) {
-		perror("setpass: priv_set");
+		perror("acctrenew: priv_set");
 		return 1;
 	}
 
@@ -119,7 +119,7 @@ char		*email, *license;
 	}
 
 	if (setuid(getuid()) == -1) {
-		perror("setpass: setuid");
+		perror("acctrenew: setuid");
 		return 1;
 	}
 
@@ -144,6 +144,17 @@ char		*email, *license;
 	tm = localtime(&n);
 	strftime(tfmt, sizeof (tfmt), "%d-%b-%Y", tm);
 
+	/*
+	 * Only allow renewal if the account expiry date is
+	 * sooner than 29 days.
+	 */
+	if (((n / 60 / 60 / 24) - (time(NULL) / 60 / 60 / 24)) >= 29) {
+		(void) fprintf(stderr, 
+			"acctrenew: you may only renew your "
+			"account 28 days before expiry\n");
+		return 1;
+	}
+
 	printf(
 "Toolserver account renewal tool\n"
 "===============================\n"
@@ -157,7 +168,7 @@ char		*email, *license;
 
 	if ((answer = readline("Do you wish to continue (yes/no)? ")) == NULL)
 		return 0;
-	if (strcmp(answer, "yes"))
+	if (*answer != 'y')
 		return 0;
 
 	printf("\n");
@@ -176,7 +187,7 @@ char		*email, *license;
 	if ((answer = readline("Do you agree to the rules as currently listed (yes/no)? ")) == NULL)
 		return 0;
 
-	if (strcmp(answer, "yes"))
+	if (*answer != 'y')
 		return 0;
 
 	printf(
@@ -205,7 +216,7 @@ char		*email, *license;
 		if ((answer = readline("Invoke setmail (yes/no)? ")) == NULL)
 			return 0;
 
-		if (strcmp(answer, "yes"))
+		if (*answer != 'y')
 			break;
 
 		printf("\n=== setmail starts ===\n");
@@ -219,7 +230,7 @@ char		*email, *license;
 	}
 
 	printf(
-"Toolserver users are able to set a default license to be used for\n"
+"\nToolserver users are able to set a default license to be used for\n"
 "their tools, when there is no explicit license on the tool.  You\n"
 "can read more about this at <https://wiki.toolserver.org/view/Default_license>.\n\n"
 );
@@ -244,7 +255,7 @@ char		*email, *license;
 		if ((answer = readline("Invoke setlicense (yes/no)? ")) == NULL)
 			return 0;
 
-		if (strcmp(answer, "yes"))
+		if (*answer != 'y')
 			break;
 
 		printf("\n=== setlicense starts ===\n");
@@ -257,12 +268,12 @@ char		*email, *license;
 			break;
 	}
 
-	printf("Okay, that's everything.  Please wait while I renew your account...\n");
+	printf("\nOkay, that's everything.  Please wait while I renew your account...\n");
 
 	n = time(NULL);
 	n /= (60 * 60 * 24);
 	/* 6 months is roughly 24 weeks */
-	n += 24;
+	n += 24 * 7;
 	sprintf(tfmt, "%d", n);
 
 	if (ldap_user_replace_attr(conn, pwd->pw_name, "shadowExpire", tfmt) < 0)
