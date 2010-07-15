@@ -1,0 +1,3 @@
+#! /bin/ksh
+
+echo >&2 "$0: this program is only available on Solaris login servers"
