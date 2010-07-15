@@ -131,12 +131,12 @@ char		*email, *license;
 	priv_set(PRIV_SET, PRIV_EFFECTIVE, PRIV_PROC_FORK, PRIV_PROC_EXEC, NULL);
 
 	if (!isatty(0) || !isatty(1) || !isatty(2)) {
-		(void) fprintf(stderr, "setpass: must be run from a terminal\n");
+		(void) fprintf(stderr, "acctrenew: must be run from a terminal\n");
 		return 1;
 	}
 
 	if (!check_utmp(pwd->pw_name)) {
-		(void) fprintf(stderr, "setpass: you don't seem to be logged in\n");
+		(void) fprintf(stderr, "acctrenew: you don't seem to be logged in\n");
 		return 1;
 	}
 

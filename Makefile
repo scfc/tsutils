@@ -11,11 +11,14 @@ SUBDIRS		= \
 	readline	\
 	setmail		\
        	setpass		\
+	setpass_fake	\
 	getpasstofile	\
 	summdisk	\
 	setlicense	\
 	resetpass	\
-	acctrenew
+	resetpass_fake	\
+	acctrenew	\
+	acctrenew_fake
 MAKEFLAGS	= --no-print-directory
 
 include config.mk
