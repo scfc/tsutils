@@ -156,15 +156,15 @@ char		*email, *license;
 	}
 
 	printf(
-"Toolserver account renewal tool\n"
-"===============================\n"
-"\n"
-"This utility will extend the expiry date of your account by\n"
-"six months.  It should be used when your account is nearing\n"
-"expiry.\n"
-"\n"
-"Current account expiry date: %s\n"
-"\n", tfmt);
+		"Toolserver account renewal tool\n"
+		"===============================\n"
+		"\n"
+		"This utility will extend the expiry date of your account by\n"
+		"six months.  It should be used when your account is nearing\n"
+		"expiry.\n"
+		"\n"
+		"Current account expiry date: %s\n"
+		"\n", tfmt);
 
 	if ((answer = readline("Do you wish to continue (yes/no)? ")) == NULL)
 		return 0;
@@ -177,12 +177,12 @@ char		*email, *license;
 		return 1;
 
 	printf(
-"\n"
-"All Toolserver users are required to abide by the rules, which\n"
-"are listed at <https://wiki.toolserver.org/view/Rules>.  The\n"
-"rules may change from time to time, so you should now take a\n"
-"moment to review them.\n"
-"\n");
+		"\n"
+		"All Toolserver users are required to abide by the rules, which\n"
+		"are listed at <https://wiki.toolserver.org/view/Rules>.  The\n"
+		"rules may change from time to time, so you should now take a\n"
+		"moment to review them.\n"
+		"\n");
 
 	if ((answer = readline("Do you agree to the rules as currently listed (yes/no)? ")) == NULL)
 		return 0;
@@ -191,23 +191,23 @@ char		*email, *license;
 		return 0;
 
 	printf(
-"\n"
-"All Toolserver accounts should have an up-to-date email address\n"
-"so that the Toolserver administrators can contact them.\n\n");
+		"\n"
+		"All Toolserver accounts should have an up-to-date email address\n"
+		"so that the Toolserver administrators can contact them.\n\n");
 
 	if (ldap_user_get_attr(conn, pwd->pw_name, "mail", &email) < 0)
 		return 1;
 
 	if (!email) {
 		(void) printf(
-"No email address is currently set for your account in LDAP.  If\n"
-"you like, I can invoke \"setmail\" for you now, so you can set\n"
-"an address.\n\n");
+			"No email address is currently set for your account in LDAP.  If\n"
+			"you like, I can invoke \"setmail\" for you now, so you can set\n"
+			"an address.\n\n");
 	} else {
 		(void) printf("Current email address: %s\n\n", email);
 		(void) printf(
-"If this address is not correct, I can invoke \"setmail\" for you\n"
-"now, so you can change it.\n\n");
+			"If this address is not correct, I can invoke \"setmail\" for you\n"
+			"now, so you can change it.\n\n");
 	}
 
 	for (;;) {
@@ -230,8 +230,8 @@ char		*email, *license;
 	}
 
 	printf(
-"\nToolserver users are able to set a default license to be used for\n"
-"their tools, when there is no explicit license on the tool.  You\n"
+"\nToolserver users are required to set a default license to be used\n"
+"for their tools, when there is no explicit license on the tool.  You\n"
 "can read more about this at <https://wiki.toolserver.org/view/Default_license>.\n\n"
 );
 
@@ -240,13 +240,14 @@ char		*email, *license;
 
 	if (!license) {
 		(void) printf(
-"Your account currently has no default license.  If you like, I\n"
-"can invoke \"setlicense\" for you now, so you can set a license.\n\n");
+			"Your account currently has no default license.  You will not be\n"
+			"able to renew your account until you set a license. If you like, I\n"
+			"can invoke \"setlicense\" for you now, so you can set a license.\n\n");
 	} else {
 		(void) printf("Current default license: %s\n\n", license);
 		(void) printf(
-"If this license is not correct, I can invoke \"setlicense\" for you\n"
-"now, so you can change it.\n\n");
+			"If this license is not correct, I can invoke \"setlicense\" for you\n"
+			"now, so you can change it.\n\n");
 	}
 
 	for (;;) {
@@ -266,6 +267,15 @@ char		*email, *license;
 			printf("It looks like setlicense failed for some reason.\n");
 		else
 			break;
+	}
+
+	if (ldap_user_get_attr(conn, pwd->pw_name, "tsDefaultLicense", &license) < 0)
+		return 1;
+
+	if (!license) {
+		printf("No license is set.  Please set your default license with\n"
+			"\"setlicense\", then run acctrenew again.\n");
+		return 0;
 	}
 
 	printf("\nOkay, that's everything.  Please wait while I renew your account...\n");
