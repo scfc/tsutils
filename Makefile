@@ -1,3 +1,4 @@
+VERSION	= $(shell date "+%Y%m%d_%H%M%S")
 SUBDIRS		= \
 	libtsutils	\
 	watcherd	\
@@ -44,7 +45,7 @@ prototype: prototype.in Makefile
 		
 pkginfo: pkginfo.in Makefile
 	cat $<						\
-		| sed -e "s,%version%,`svnversion`,g"	\
+		| sed -e "s,%version%,$(VERSION),g"	\
 		> $@
 
 package: TSutils.pkg
