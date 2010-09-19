@@ -97,9 +97,9 @@ char		*curpass;
 	 * Drop all privileges, but leave DAC read in the permitted set.  This
 	 * is needed to read the LDAP password.
 	 */
-	if (priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, NULL) == -1 ||
+	if (priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_NET_ACCESS, NULL) == -1 ||
 	    priv_set(PRIV_SET, PRIV_INHERITABLE, NULL) == -1 ||
-	    priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL) == -1) {
+	    priv_set(PRIV_SET, PRIV_EFFECTIVE, PRIV_NET_ACCESS, NULL) == -1) {
 		perror("setpass: priv_set");
 		return 1;
 	}
@@ -112,8 +112,11 @@ char		*curpass;
 	if ((conn = ldap_connect_priv()) == NULL)
 		return 1;
 
-	/* We no longer need any privileges */
-	priv_set(PRIV_SET, PRIV_PERMITTED, NULL);
+	/* We no longer need any root privileges */
+	if (priv_set(PRIV_SET, PRIV_PERMITTED, NULL) == -1) {
+		perror("setpass: priv_set");
+		return 1;
+	}
 
 	if (!isatty(0) || !isatty(1) || !isatty(2)) {
 		(void) fprintf(stderr, "setpass: must be run from a terminal\n");
