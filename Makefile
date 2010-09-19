@@ -54,4 +54,8 @@ TSutils.pkg: prototype pkginfo all
 	pkgmk -o -d $$PWD
 	pkgtrans -o -s $$PWD $$PWD/TSutils.pkg TSutils
 
-.PHONY: package
+upload: package
+	pfexec sh -c 'rm -rf /install/pkgs/custom/i386/TSutils && cp -r TSutils /install/pkgs/custom/i386'
+
+.PHONY: package prototype pkginfo
+
