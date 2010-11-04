@@ -93,7 +93,7 @@ char		*input, *newmail, *curmail;
 	if (strcmp(input, "yes"))
 		return 0;
 
-	if (ldap_user_replace_attr(conn, pwd->pw_name, "mail", curmail) < 0)
+	if (ldap_user_replace_attr(conn, pwd->pw_name, "mail", newmail) < 0)
 		return 1;
 
 	(void) printf("setmail: new address successfully set\n");
