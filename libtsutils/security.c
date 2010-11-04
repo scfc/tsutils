@@ -84,7 +84,7 @@ struct termios	nt, ot;
 			return pass;
 
 		case 0x7F:	/* DEL */
-		case 0x10:	/* ^H */
+		case 0x08:	/* ^H */
 			if (n == 0) {
 				(void) write(tt, "\a", 1);
 				break;
