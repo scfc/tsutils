@@ -4,7 +4,7 @@ GROUP		= root
 
 SRCS		= resetpass.c
 OBJS		= $(SRCS:.c=.o)
-LIBS		= -lldap -lreadline
+LIBS		= -lldap
 
 # No setuid tools on Linux
 SKIP		= Linux

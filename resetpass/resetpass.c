@@ -57,8 +57,6 @@
 #include	<ldap.h>
 #include	<priv.h>
 
-#include	<readline/readline.h>
-
 #include	"tsutils.h"
 
 static const char *mktoken(void);
@@ -66,10 +64,41 @@ static int check_utmp(const char *username);
 static int set_password(LDAP *conn, const char *username);
 static int validate_token(const char *username, const char *email);
 static int generate_token(const char *username, const char *email);
+/* Like setuid and setgid, but with error checking */
+static void xroot(void);
+static void xuser(void);
 
 #define TOKENDIR "/var/resetpass"
 #define TOKENSZ 32 /* Maximum length, not actual length */
 #define TOKENCHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+
+static void
+xroot(void)
+{
+	if (setegid(0) == -1) {
+		perror("resetpass: internal error (xroot)");
+		_exit(1);
+	}
+
+	if (seteuid(0) == -1) {
+		perror("resetpass: internal error (xroot)");
+		_exit(1);
+	}
+}
+
+static void
+xuser(void)
+{
+	if (setegid(getgid()) == -1) {
+		perror("resetpass: internal error (xroot)");
+		_exit(1);
+	}
+
+	if (seteuid(getuid()) == -1) {
+		perror("resetpass: internal error (xroot)");
+		_exit(1);
+	}
+}
 
 static const char *
 mktoken()
@@ -143,18 +172,6 @@ char		*email, *curpass;
 
 	(void) argv;
 
-	/*
-	 * Drop all privileges except DAC override, which we need to
-	 * access the token directory.
-	 */
-        if (priv_set(PRIV_SET, PRIV_PERMITTED, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_WRITE, 
-			PRIV_PROC_FORK, PRIV_FILE_DAC_SEARCH, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL) == -1 ||
-            priv_set(PRIV_SET, PRIV_INHERITABLE, PRIV_PROC_FORK, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL) == -1 ||
-            priv_set(PRIV_SET, PRIV_EFFECTIVE, NULL) == -1) {
-		perror("resetpass: priv_set");
-		return 1;
-	}
-
 	/* Create the token directory while we're root */
 	umask(07);
 
@@ -163,19 +180,16 @@ char		*email, *curpass;
 		return 1;
 	}
 
-	/* Drop privs */
-	if (seteuid(getuid()) == -1) {
-		perror("resetpass: internal error (setuid)");
+	if ((conn = ldap_connect_priv()) == NULL)
 		return 1;
-	}
+
+	/* Drop privs */
+	xuser();
 
 	if (argc != 1) {
 		(void) fprintf(stderr, "usage: resetpass\n");
 		return 1;
 	}
-
-	if ((conn = ldap_connect_priv()) == NULL)
-		return 1;
 
 	if (!isatty(0) || !isatty(1) || !isatty(2)) {
 		(void) fprintf(stderr, "resetpass: must be run from a terminal\n");
@@ -224,16 +238,15 @@ char		*email, *curpass;
 		} else {
 		int	d;
 			/* Remove the token */
-			priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
+			xroot();
 			if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
+				xuser();
 				perror("resetpass: internal error (remove token)");
 				return 1;
 			}
-			priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 
-			seteuid(0);
 			unlinkat(d, pwd->pw_name, 0);
-			seteuid(getuid());
+			xuser();
 		}
 
 	return 0;
@@ -280,15 +293,15 @@ char		 tfmt[128];
 int		 d = -1, f = -1;
 char		 token[TOKENSZ + 1] = { 0 };
 
-	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
+	xroot();
 	if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
+		xuser();
 		perror("resetpass: internal error (open tokendir)");
-		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
 		goto err;
 	}
 
 	if ((f = openat(d, username, O_RDONLY)) == -1) {
-		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
+		xuser();
 		if (errno != ENOENT) {
 			perror("resetpass: internal error (read token)");
 			goto err;
@@ -306,19 +319,20 @@ char		 token[TOKENSZ + 1] = { 0 };
 		return 0;
 	} else {
 	char	*try;
-		priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, PRIV_FILE_DAC_SEARCH, NULL);
-
 		/* Found the token; verify the user knows it. */
 
 		if (fstat(f, &sb) == -1) {
+			xuser();
 			perror("resetpass: internal error (fstat)");
 			goto err;
 		}
 
 		if (read(f, token, TOKENSZ) < 0) {
+			xuser();
 			perror("resetpass: internal error (read)");
 			goto err;
 		}
+		xuser();
 
 		tm = gmtime(&sb.st_mtime);
 		strftime(tfmt, sizeof (tfmt), "%d-%b-%Y %H:%M:%S", tm);
@@ -328,20 +342,21 @@ char		 token[TOKENSZ + 1] = { 0 };
 			tfmt
 		);
 
-		if ((try = readline("Password reset token: ")) == NULL)
+		if ((try = ts_getpass("Password reset token: ")) == NULL)
 			goto err;
 
 		printf("\n");
 
 		if (!*try) {
-			/* There's no privilege to allow deleting a file... */
-			seteuid(0);
-			if (unlinkat(d, username, 0) == -1) {
-				seteuid(getuid());
+		int	i;
+			xroot();
+			i = unlinkat(d, username, 0);
+			xuser();
+
+			if (i == -1) {
 				perror("resetpass: internal error removing token");
 				goto err;
 			}
-			seteuid(getuid());
 
 			if (generate_token(username, email) < 0)
 				perror("resetpass: internal error sending token");
@@ -383,21 +398,19 @@ int		 status, pid;
 		goto err;
 	}
 
-	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
+	xroot();
 	if ((d = open(TOKENDIR, O_RDONLY)) == -1) {
+		xuser();
 		perror("resetpass: internal error (open token directory)");
 		goto err;
 	}
-	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_READ, NULL);
 
-	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_SEARCH, NULL);
-	seteuid(0);
 	if ((f = openat(d, username, O_WRONLY | O_CREAT | O_EXCL, 0770)) == -1) {
+		xuser();
 		perror("resetpass: internal error (open token)");
 		goto err;
 	}
-	seteuid(getuid());
-	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_FILE_DAC_WRITE, PRIV_FILE_DAC_SEARCH, NULL);
+	xuser();
 
 	if (write(f, ntok, strlen(ntok)) < (ssize_t) strlen(ntok)) {
 		perror("resetpass: internal error (write token)");
@@ -419,13 +432,8 @@ int		 status, pid;
 		_exit(1);
 	}
 
-	priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_PROC_FORK, NULL);
 	pid = fork();
-	priv_set(PRIV_OFF, PRIV_EFFECTIVE, PRIV_PROC_FORK, NULL);
 
-	/*
-	 * Note: leave PRIV_PROC_FORK enabled for the child
-	 */
 	switch (pid) {
 	case 0: { /* child */
 	char const * const env[] = {
@@ -437,12 +445,14 @@ int		 status, pid;
 		"-oi", "-bm", "--", email,
 		NULL
 	};
+
+		setgid(0);
+
 		chdir("/");
 		dup2(fds[0], 0);
 		close(fds[0]);
 		close(fds[1]);
 
-		priv_set(PRIV_ON, PRIV_EFFECTIVE, PRIV_PROC_FORK, PRIV_PROC_EXEC, PRIV_PROC_SETID, NULL);
 		execve("/usr/lib/sendmail", (char *const *) args, (char *const *) env);
 		_exit(1);
 	}
