@@ -19,7 +19,8 @@ SUBDIRS		= \
 	resetpass	\
 	resetpass_fake	\
 	acctrenew	\
-	acctrenew_fake
+	acctrenew_fake	\
+	passwd
 MAKEFLAGS	= --no-print-directory
 
 include config.mk
