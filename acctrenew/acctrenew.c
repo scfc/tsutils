@@ -1,6 +1,7 @@
 /*
  *  Copyright (c) 2008, River Tarnell.
  *  Copyright (c) 2010, Wikimedia Deutschland (River Tarnell)
+ *  Copyright (c) 2012, Tim Landscheidt
  *  All rights reserved.
  * 
  *  Redistribution and use in source and binary forms, with or without
@@ -284,7 +285,7 @@ char		*email, *license;
 	n /= (60 * 60 * 24);
 	/* 6 months is roughly 24 weeks */
 	n += 24 * 7;
-	sprintf(tfmt, "%d", n);
+	sprintf(tfmt, "%d", (int) n);
 
 	if (ldap_user_replace_attr(conn, pwd->pw_name, "shadowExpire", tfmt) < 0)
 		return 1;
