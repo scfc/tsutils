@@ -1,8 +1,8 @@
 ACLOCAL_AMFLAGS = -I m4
-SUBDIRS = acctexp acctrenew date2days days2date			\
-getpasstofile libtsutils listlogins listusers lsexp passwd	\
-readline resetpass setlicense setmail setpass summdisk		\
-watcherd whinequota whodo
+SUBDIRS = libtsutils acctexp acctrenew date2days days2date	\
+getpasstofile listlogins listusers lsexp passwd readline	\
+resetpass setlicense setmail setpass summdisk watcherd		\
+whinequota whodo
 MAKEFLAGS = --no-print-directory
 
 #LINT		= lint
