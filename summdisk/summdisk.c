@@ -1,4 +1,5 @@
 /* Copyright (c) 2010 River Tarnell <river@loreley.flyingparchment.org.uk>. */
+/* Copyright (c) 2012 Tim Landscheidt <tim@tim-landscheidt.de>. */
 /*
  * Permission is granted to anyone to use this software for any purpose,
  * including commercial applications, and to alter it and redistribute it
@@ -36,7 +37,7 @@ static uent_t *getuser(uid_t);
 
 static void summarise(int);
 static void report(void);
-static int usercmp(const uent_t *, const uent_t *);
+static int usercmp(const void *, const void *);
 
 int
 main(argc, argv)
@@ -121,11 +122,11 @@ int		 ffd;
 
 static int
 usercmp(a, b)
-	const uent_t	*a, *b;
+	const void	*a, *b;
 {
-	if (a->ue_nbytes > b->ue_nbytes)
+	if (((uent_t *) a)->ue_nbytes > ((uent_t *) b)->ue_nbytes)
 		return -1;
-	else if (a->ue_nbytes < b->ue_nbytes)
+	else if (((uent_t *) a)->ue_nbytes < ((uent_t *) b)->ue_nbytes)
 		return 1;
 	else
 		return 0;
