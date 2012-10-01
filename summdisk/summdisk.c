@@ -156,7 +156,7 @@ size_t	i = 0;
 	for (; i < nusers; ++i) {
 	struct passwd	*pwd;
 	char		 uname[32];
-		if (pwd = getpwuid(users[i].ue_user))
+		if ((pwd = getpwuid(users[i].ue_user)))
 			strlcpy(uname, pwd->pw_name, sizeof uname);
 		else
 			snprintf(uname, sizeof uname, "%d", (int) users[i].ue_user);
