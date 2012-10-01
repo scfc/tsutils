@@ -1,6 +1,7 @@
 /*
  *  Copyright (c) 2008, River Tarnell
  *  Copyright (c) 2010, Wikimedia Deutschland (River Tarnell)
+ *  Copyright (c) 2012, Tim Landscheidt
  *  All rights reserved.
  * 
  *  Redistribution and use in source and binary forms, with or without
@@ -257,11 +258,7 @@ set_password(conn, username)
 	LDAP		*conn;
 	const char	*username;
 {
-char		*attrs[2];
-LDAPMod		 mod;
-LDAPMod		*mods[2];
 char		 newpass[128], verify[128], *s;
-int		 err;
 
 	if ((s = ts_getpass("Enter new password: ")) == NULL)
 		return 1;
